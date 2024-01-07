@@ -19,4 +19,4 @@ gradio
 gfpgan
 dlib-bin
 ninja
-paddlepaddle-gpu==2.3.2
+paddlepaddle-gpu
