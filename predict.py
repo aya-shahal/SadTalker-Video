@@ -24,6 +24,10 @@ class Predictor(BasePredictor):
     
         device = "cuda"
 
+        current_code_path = sys.argv[0]
+        current_root_path = os.path.split(current_code_path)[0]
+        os.environ['TORCH_HOME'] = os.path.join(current_root_path, checkpoint_dir)
+
         path_of_lm_croper = os.path.join(current_root_path, checkpoint_dir, 'shape_predictor_68_face_landmarks.dat')
         path_of_net_recon_model = os.path.join(current_root_path, checkpoint_dir, 'epoch_20.pth')
         dir_of_BFM_fitting = os.path.join(current_root_path, checkpoint_dir, 'BFM_Fitting')
@@ -80,10 +84,6 @@ class Predictor(BasePredictor):
         save_dir = os.path.join(result_dir, strftime("%Y_%m_%d_%H.%M.%S"))
         os.makedirs(save_dir, exist_ok=True)
     
-        current_code_path = sys.argv[0]
-        current_root_path = os.path.split(current_code_path)[0]
-        os.environ['TORCH_HOME'] = os.path.join(current_root_path, checkpoint_dir)
-
         # process video
         # crop image and extract 3dmm from image
         first_frame_dir = os.path.join(save_dir, 'first_frame_dir')
