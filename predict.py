@@ -1,192 +1,134 @@
 """run bash download.sh first to prepare the weights file"""
-import os
-import shutil
-from argparse import Namespace
+import torch
+from time import strftime
+import os, sys
+from argparse import ArgumentParser
 from src.utils.preprocess import CropAndExtract
 from src.test_audio2coeff import Audio2Coeff
 from src.facerender.animate import AnimateFromCoeff
 from src.generate_batch import get_data
 from src.generate_facerender_batch import get_facerender_data
-from src.utils.init_path import init_path
+from third_part.GFPGAN.gfpgan import GFPGANer
+from third_part.GPEN.gpen_face_enhancer import FaceEnhancement
 from cog import BasePredictor, Input, Path
+import warnings
 
-checkpoints = "checkpoints"
+warnings.filterwarnings("ignore")
 
+checkpoint_dir = "./checkpoints"
+result_dir = "./results"
 
 class Predictor(BasePredictor):
     def setup(self):
         """Load the model into memory to make running multiple predictions efficient"""
+    
         device = "cuda"
 
-        
-        sadtalker_paths = init_path(checkpoints,os.path.join("src","config"))
+        path_of_lm_croper = os.path.join(current_root_path, checkpoint_dir, 'shape_predictor_68_face_landmarks.dat')
+        path_of_net_recon_model = os.path.join(current_root_path, checkpoint_dir, 'epoch_20.pth')
+        dir_of_BFM_fitting = os.path.join(current_root_path, checkpoint_dir, 'BFM_Fitting')
+        wav2lip_checkpoint = os.path.join(current_root_path, checkpoint_dir, 'wav2lip.pth')
+
+        audio2pose_checkpoint = os.path.join(current_root_path, checkpoint_dir, 'auido2pose_00140-model.pth')
+        audio2pose_yaml_path = os.path.join(current_root_path, 'src', 'config', 'auido2pose.yaml')
+
+        audio2exp_checkpoint = os.path.join(current_root_path, checkpoint_dir, 'auido2exp_00300-model.pth')
+        audio2exp_yaml_path = os.path.join(current_root_path, 'src', 'config', 'auido2exp.yaml')
+
+        free_view_checkpoint = os.path.join(current_root_path, checkpoint_dir, 'facevid2vid_00189-model.pth.tar')
+
+        mapping_checkpoint = os.path.join(current_root_path, checkpoint_dir, 'mapping_00109-model.pth.tar')
+        facerender_yaml_path = os.path.join(current_root_path, 'src', 'config', 'facerender_still.yaml')
 
         # init model
-        self.preprocess_model = CropAndExtract(sadtalker_paths, device
-        )
+        print("Loading Model Weights...")
+        self.preprocess_model = CropAndExtract(path_of_lm_croper, path_of_net_recon_model, dir_of_BFM_fitting, device)
 
-        self.audio_to_coeff = Audio2Coeff(
-            sadtalker_paths,
-            device,
-        )
+        self.audio_to_coeff = Audio2Coeff(audio2pose_checkpoint, audio2pose_yaml_path, audio2exp_checkpoint, audio2exp_yaml_path,
+                                    wav2lip_checkpoint, device)
+        self.animate_from_coeff = AnimateFromCoeff(free_view_checkpoint, mapping_checkpoint, facerender_yaml_path, device)
 
-        self.animate_from_coeff = {
-            "full": AnimateFromCoeff(
-                sadtalker_paths,
-                device,
-            ),
-            "others": AnimateFromCoeff(
-                sadtalker_paths,
-                device,
-            ),
-        }
+        self.restorer_model = GFPGANer(model_path='checkpoints/GFPGANv1.3.pth', upscale=1, arch='clean',
+                                channel_multiplier=2, bg_upsampler=None)
+        self.enhancer_model = FaceEnhancement(base_dir='checkpoints', size=512, model='GPEN-BFR-512', use_sr=False,
+                                        sr_model='rrdb_realesrnet_psnr', channel_multiplier=2, narrow=1, device=device)
+        print("All Models Loaded :)")
+    
 
     def predict(
         self,
-        source_image: Path = Input(
-            description="Upload the source image, it can be video.mp4 or picture.png",
+        pic_path: Path = Input(
+            description="Upload the source video usually a .mp4 file",
         ),
-        driven_audio: Path = Input(
+        audio_path: Path = Input(
             description="Upload the driven audio, accepts .wav and .mp4 file",
         ),
-        enhancer: str = Input(
-            description="Choose a face enhancer",
-            choices=["gfpgan", "RestoreFormer"],
-            default="gfpgan",
+        enhancer_region: str = Input(
+            description="Choose a face enhancer region",
+            choices=["none", "lip", "face"],
+            default="lip",
         ),
-        preprocess: str = Input(
-            description="how to preprocess the images",
-            choices=["crop", "resize", "full"],
-            default="full",
-        ),
-        ref_eyeblink: Path = Input(
-            description="path to reference video providing eye blinking",
-            default=None,
-        ),
-        ref_pose: Path = Input(
-            description="path to reference video providing pose",
-            default=None,
-        ),
-        still: bool = Input(
-            description="can crop back to the original videos for the full body aniamtion when preprocess is full",
-            default=True,
+        use_DIAN: bool = Input(
+            description="Enable Depth-Aware Video Frame Interpolation",
+            default=False,
         ),
     ) -> Path:
         """Run a single prediction on the model"""
-
-        animate_from_coeff = (
-            self.animate_from_coeff["full"]
-            if preprocess == "full"
-            else self.animate_from_coeff["others"]
-        )
-
-        args = load_default()
-        args.pic_path = str(source_image)
-        args.audio_path = str(driven_audio)
         device = "cuda"
-        args.still = still
-        args.ref_eyeblink = None if ref_eyeblink is None else str(ref_eyeblink)
-        args.ref_pose = None if ref_pose is None else str(ref_pose)
+        
+        # set basic peridictions params
+        save_dir = os.path.join(result_dir, strftime("%Y_%m_%d_%H.%M.%S"))
+        os.makedirs(save_dir, exist_ok=True)
+    
+        current_code_path = sys.argv[0]
+        current_root_path = os.path.split(current_code_path)[0]
+        os.environ['TORCH_HOME'] = os.path.join(current_root_path, checkpoint_dir)
 
+        # process video
         # crop image and extract 3dmm from image
-        results_dir = "results"
-        if os.path.exists(results_dir):
-            shutil.rmtree(results_dir)
-        os.makedirs(results_dir)
-        first_frame_dir = os.path.join(results_dir, "first_frame_dir")
-        os.makedirs(first_frame_dir)
-
-        print("3DMM Extraction for source image")
-        first_coeff_path, crop_pic_path, crop_info = self.preprocess_model.generate(
-            args.pic_path, first_frame_dir, preprocess, source_image_flag=True
-        )
+        first_frame_dir = os.path.join(save_dir, 'first_frame_dir')
+        os.makedirs(first_frame_dir, exist_ok=True)
+        print('3DMM Extraction for source image')
+        first_coeff_path, crop_pic_path, crop_info = self.preprocess_model.generate(pic_path, first_frame_dir)
         if first_coeff_path is None:
             print("Can't get the coeffs of the input")
             return
-
-        if ref_eyeblink is not None:
-            ref_eyeblink_videoname = os.path.splitext(os.path.split(ref_eyeblink)[-1])[
-                0
-            ]
-            ref_eyeblink_frame_dir = os.path.join(results_dir, ref_eyeblink_videoname)
-            os.makedirs(ref_eyeblink_frame_dir, exist_ok=True)
-            print("3DMM Extraction for the reference video providing eye blinking")
-            ref_eyeblink_coeff_path, _, _ = self.preprocess_model.generate(
-                ref_eyeblink, ref_eyeblink_frame_dir
-            )
-        else:
-            ref_eyeblink_coeff_path = None
-
-        if ref_pose is not None:
-            if ref_pose == ref_eyeblink:
-                ref_pose_coeff_path = ref_eyeblink_coeff_path
-            else:
-                ref_pose_videoname = os.path.splitext(os.path.split(ref_pose)[-1])[0]
-                ref_pose_frame_dir = os.path.join(results_dir, ref_pose_videoname)
-                os.makedirs(ref_pose_frame_dir, exist_ok=True)
-                print("3DMM Extraction for the reference video providing pose")
-                ref_pose_coeff_path, _, _ = self.preprocess_model.generate(
-                    ref_pose, ref_pose_frame_dir
-                )
-        else:
-            ref_pose_coeff_path = None
-
         # audio2ceoff
-        batch = get_data(
-            first_coeff_path,
-            args.audio_path,
-            device,
-            ref_eyeblink_coeff_path,
-            still=still,
-        )
-        coeff_path = self.audio_to_coeff.generate(
-            batch, results_dir, args.pose_style, ref_pose_coeff_path
-        )
+        batch = get_data(first_coeff_path, audio_path, device)
+        coeff_path = self.audio_to_coeff.generate(batch, save_dir)
         # coeff2video
-        print("coeff2video")
-        data = get_facerender_data(
-            coeff_path,
-            crop_pic_path,
-            first_coeff_path,
-            args.audio_path,
-            args.batch_size,
-            args.input_yaw,
-            args.input_pitch,
-            args.input_roll,
-            expression_scale=args.expression_scale,
-            still_mode=still,
-            preprocess=preprocess,
-        )
-        animate_from_coeff.generate(
-            data, results_dir, args.pic_path, crop_info,
-            enhancer=enhancer, background_enhancer=args.background_enhancer,
-            preprocess=preprocess)
+        data = get_facerender_data(coeff_path, crop_pic_path, first_coeff_path, audio_path, batch_size, device)
+        tmp_path, new_audio_path, return_path = self.animate_from_coeff.generate(data, save_dir, pic_path, crop_info,
+        final_mp4_path = return_path                                                           self.restorer_model, self.enhancer_model, enhancer_region)
+        
+        torch.cuda.empty_cache()
+        if args.use_DAIN:
+            import paddle
+            from src.dain_model import dain_predictor
+            paddle.enable_static()
+            predictor_dian = dain_predictor.DAINPredictor(dian_output, weight_path = dian_weight,
+                                                        time_step = dian_time_step,
+                                                        remove_duplicates = dian_remove_duplicates)
+            frames_path, temp_video_path = predictor_dian.run(tmp_path)
+            paddle.disable_static()
+            save_path = return_path[:-4] + '_dain.mp4'
+            final_mp4_path = save_path
+            command = r'ffmpeg -y -i "%s" -i "%s" -vcodec copy "%s"' % (temp_video_path, new_audio_path, save_path)
+            os.system(command)
 
+        # send the final output
         output = "/tmp/out.mp4"
-        mp4_path = os.path.join(results_dir, [f for f in os.listdir(results_dir) if "enhanced.mp4" in f][0])
         shutil.copy(mp4_path, output)
 
+        os.remove(tmp_path)
         return Path(output)
 
 
 def load_default():
     return Namespace(
-        pose_style=0,
         batch_size=2,
-        expression_scale=1.0,
-        input_yaw=None,
-        input_pitch=None,
-        input_roll=None,
-        background_enhancer=None,
-        face3dvis=False,
-        net_recon="resnet50",
-        init_path=None,
-        use_last_fc=False,
-        bfm_folder="./src/config/",
-        bfm_model="BFM_model_front.mat",
-        focal=1015.0,
-        center=112.0,
-        camera_d=10.0,
-        z_near=5.0,
-        z_far=15.0,
+        dian_output = 'dian_output',
+        dian_weight = './checkpoints/DAIN_weight',
+        dian_time_step = 0.5,
+        dian_remove_duplicates = False,
     )
