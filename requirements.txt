@@ -6,13 +6,13 @@ librosa==0.9.2 #
 numba
 resampy==0.3.1
 pydub==0.25.1 
-scipy==1.5.3
-kornia==0.6.8
+scipy
+kornia
 tqdm
 yacs
 pyyaml  
 joblib==1.1.0
-scikit-image==0.19.3
+scikit-image
 basicsr
 facexlib
 gradio
