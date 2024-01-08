@@ -98,8 +98,8 @@ class Predictor(BasePredictor):
         coeff_path = self.audio_to_coeff.generate(batch, save_dir)
         # coeff2video
         data = get_facerender_data(coeff_path, crop_pic_path, first_coeff_path, audio_path, batch_size, device)
-        tmp_path, new_audio_path, return_path = self.animate_from_coeff.generate(data, save_dir, pic_path, crop_info,
-        final_mp4_path = return_path                                                           self.restorer_model, self.enhancer_model, enhancer_region)
+        tmp_path, new_audio_path, return_path = self.animate_from_coeff.generate(data, save_dir, pic_path, crop_info, self.restorer_model, self.enhancer_model, enhancer_region)
+        final_mp4_path = return_path 
         
         torch.cuda.empty_cache()
         if args.use_DAIN:
