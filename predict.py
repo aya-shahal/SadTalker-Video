@@ -2,7 +2,7 @@
 import torch
 from time import strftime
 import os, sys
-from argparse import ArgumentParser
+import shutil
 from src.utils.preprocess import CropAndExtract
 from src.test_audio2coeff import Audio2Coeff
 from src.facerender.animate import AnimateFromCoeff
@@ -21,7 +21,7 @@ result_dir = "./results"
 class Predictor(BasePredictor):
     def setup(self):
         """Load the model into memory to make running multiple predictions efficient"""
-    
+        print("Setup Predictions...")
         device = "cuda"
 
         current_code_path = sys.argv[0]
@@ -61,7 +61,7 @@ class Predictor(BasePredictor):
 
     def predict(
         self,
-        pic_path: Path = Input(
+        vid_path: Path = Input(
             description="Upload the source video usually a .mp4 file",
         ),
         audio_path: Path = Input(
@@ -72,12 +72,13 @@ class Predictor(BasePredictor):
             choices=["none", "lip", "face"],
             default="lip",
         ),
-        use_DIAN: bool = Input(
+        use_DAIN: bool = Input(
             description="Enable Depth-Aware Video Frame Interpolation",
             default=False,
         ),
     ) -> Path:
         """Run a single prediction on the model"""
+        print("Start Predictions...")
         device = "cuda"
         
         # set basic peridictions params
@@ -89,7 +90,7 @@ class Predictor(BasePredictor):
         first_frame_dir = os.path.join(save_dir, 'first_frame_dir')
         os.makedirs(first_frame_dir, exist_ok=True)
         print('3DMM Extraction for source image')
-        first_coeff_path, crop_pic_path, crop_info = self.preprocess_model.generate(pic_path, first_frame_dir)
+        first_coeff_path, crop_pic_path, crop_info = self.preprocess_model.generate(vid_path, first_frame_dir)
         if first_coeff_path is None:
             print("Can't get the coeffs of the input")
             return
@@ -98,18 +99,18 @@ class Predictor(BasePredictor):
         coeff_path = self.audio_to_coeff.generate(batch, save_dir)
         # coeff2video
         data = get_facerender_data(coeff_path, crop_pic_path, first_coeff_path, audio_path, batch_size, device)
-        tmp_path, new_audio_path, return_path = self.animate_from_coeff.generate(data, save_dir, pic_path, crop_info, self.restorer_model, self.enhancer_model, enhancer_region)
+        tmp_path, new_audio_path, return_path = self.animate_from_coeff.generate(data, save_dir, vid_path, crop_info, self.restorer_model, self.enhancer_model, enhancer_region)
         final_mp4_path = return_path 
         
         torch.cuda.empty_cache()
-        if args.use_DAIN:
+        if use_DAIN:
             import paddle
             from src.dain_model import dain_predictor
             paddle.enable_static()
-            predictor_dian = dain_predictor.DAINPredictor(dian_output, weight_path = dian_weight,
-                                                        time_step = dian_time_step,
-                                                        remove_duplicates = dian_remove_duplicates)
-            frames_path, temp_video_path = predictor_dian.run(tmp_path)
+            predictor_dain = dain_predictor.DAINPredictor(dain_output, weight_path = dain_weight,
+                                                        time_step = dain_time_step,
+                                                        remove_duplicates = dain_remove_duplicates)
+            frames_path, temp_video_path = predictor_dain.run(tmp_path)
             paddle.disable_static()
             save_path = return_path[:-4] + '_dain.mp4'
             final_mp4_path = save_path
@@ -127,8 +128,8 @@ class Predictor(BasePredictor):
 def load_default():
     return Namespace(
         batch_size=2,
-        dian_output = 'dian_output',
-        dian_weight = './checkpoints/DAIN_weight',
-        dian_time_step = 0.5,
-        dian_remove_duplicates = False,
+        dain_output = 'dain_output',
+        dain_weight = './checkpoints/DAIN_weight',
+        dain_time_step = 0.5,
+        dain_remove_duplicates = False,
     )
