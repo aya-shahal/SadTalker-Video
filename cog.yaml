@@ -29,8 +29,8 @@ build:
     - "paddlepaddle-gpu==2.6.0"
   run:
     - pip install dlib-bin==19.24.2
-    - mkdir -p /root/.pyenv/versions/3.10.12/lib/python3.12/site-packages/facexlib/weights/ && wget --output-document "/root/.pyenv/versions/3.10.12/lib/python3.10/site-packages/facexlib/weights/detection_Resnet50_Final.pth" "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"
-    - mkdir -p /root/.pyenv/versions/3.10.12/lib/python3.12/site-packages/facexlib/weights/ && wget --output-document "/root/.pyenv/versions/3.10.12/lib/python3.10/site-packages/facexlib/weights/parsing_parsenet.pth" "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth"
+    - mkdir -p /root/.pyenv/versions/3.10.12/lib/python3.10/site-packages/facexlib/weights/ && wget --output-document "/root/.pyenv/versions/3.10.12/lib/python3.10/site-packages/facexlib/weights/detection_Resnet50_Final.pth" "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth"
+    - mkdir -p /root/.pyenv/versions/3.10.12/lib/python3.10/site-packages/facexlib/weights/ && wget --output-document "/root/.pyenv/versions/3.10.12/lib/python3.10/site-packages/facexlib/weights/parsing_parsenet.pth" "https://github.com/xinntao/facexlib/releases/download/v0.2.2/parsing_parsenet.pth"
     - mkdir -p /root/.cache/torch/hub/checkpoints/ && wget --output-document "/root/.cache/torch/hub/checkpoints/s3fd-619a316812.pth" "https://www.adrianbulat.com/downloads/python-fan/s3fd-619a316812.pth"
     - mkdir -p /root/.cache/torch/hub/checkpoints/ && wget --output-document "/root/.cache/torch/hub/checkpoints/2DFAN4-cd938726ad.zip" "https://www.adrianbulat.com/downloads/python-fan/2DFAN4-cd938726ad.zip"
 
