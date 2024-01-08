@@ -75,9 +75,18 @@ class Predictor(BasePredictor):
     ) -> Path:
         """Run a single prediction on the model"""
         print("Start Predictions...")
-        device = "cuda"
+        
         video_path = str(video_input_path)
         audio_path = str(audio_input_path)
+
+        # set default configs
+        device = "cuda"
+        batch_size = 2
+        dain_output = 'dain_output'
+        dain_weight = 'checkpoints/DAIN_weight'
+        dain_time_step = 0.5
+        dain_remove_duplicates = False
+        
         # set basic peridictions params
         save_dir = os.path.join(result_dir, strftime("%Y_%m_%d_%H.%M.%S"))
         os.makedirs(save_dir, exist_ok=True)
@@ -124,9 +133,5 @@ class Predictor(BasePredictor):
 
 def load_default():
     return Namespace(
-        batch_size=2,
-        dain_output = 'dain_output',
-        dain_weight = './checkpoints/DAIN_weight',
-        dain_time_step = 0.5,
-        dain_remove_duplicates = False,
+       
     )
