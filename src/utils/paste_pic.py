@@ -64,7 +64,7 @@ def paste_pic(video_path, pic_path, crop_info, new_audio_path, full_video_path, 
                                                               face_enhance=False, possion_blending=True)
         out_tmp.write(pp)
     out_tmp.release()
-    cmd = r'ffmpeg -y -i "%s" -i "%s" -vcodec copy "%s"' % (tmp_path, new_audio_path, full_video_path)
+    cmd = r'ffmpeg -y -i "%s" -i "%s" -c:v libx264 "%s"' % (tmp_path, new_audio_path, full_video_path)
     os.system(cmd)
     # os.remove(tmp_path)
     return tmp_path, new_audio_path

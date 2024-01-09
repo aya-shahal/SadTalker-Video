@@ -86,7 +86,7 @@ def main(args):
         frames_path, temp_video_path = predictor_dian.run(tmp_path)
         paddle.disable_static()
         save_path = return_path[:-4] + '_dain.mp4'
-        command = r'ffmpeg -y -i "%s" -i "%s" -vcodec copy "%s"' % (temp_video_path, new_audio_path, save_path)
+        command = r'ffmpeg -y -i "%s" -i "%s" -c:v libx264 "%s"' % (temp_video_path, new_audio_path, save_path)
         os.system(command)
     os.remove(tmp_path)
 

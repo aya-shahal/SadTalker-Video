@@ -120,7 +120,7 @@ class Predictor(BasePredictor):
             paddle.disable_static()
             save_path = return_path[:-4] + '_dain.mp4'
             final_mp4_path = save_path
-            command = r'ffmpeg -y -i "%s" -i "%s" -vcodec copy "%s"' % (temp_video_path, new_audio_path, save_path)
+            command = r'ffmpeg -y -i "%s" -i "%s" -c:v libx264 "%s"' % (temp_video_path, new_audio_path, save_path)
             os.system(command)
 
         # send the final output

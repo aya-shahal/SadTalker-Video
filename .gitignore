@@ -2,9 +2,12 @@ results/*
 checkpoints/*
 dain_output/*
 
-.ipynb_checkpoints/
+.ipynb_checkpoints/*
 
 .cog/*
+
+output.mp4
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
