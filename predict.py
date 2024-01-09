@@ -81,7 +81,7 @@ class Predictor(BasePredictor):
 
         # set default configs
         device = "cuda"
-        batch_size = 2
+        batch_size = 1
         dain_output = 'dain_output'
         dain_weight = 'checkpoints/DAIN_weight'
         dain_time_step = 0.5
@@ -125,13 +125,7 @@ class Predictor(BasePredictor):
 
         # send the final output
         output = "/tmp/out.mp4"
-        shutil.copy(mp4_path, output)
+        shutil.copy(final_mp4_path, output)
 
         os.remove(tmp_path)
         return Path(output)
-
-
-def load_default():
-    return Namespace(
-       
-    )
