@@ -1,9 +1,7 @@
-# SadTalker-Video-Lip-Sync
-
+# SadTalker-Video
+[![Open in colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/gauravk95/SadTalker-Video/blob/master/sad_talker_video_colab.ipynb) &nbsp; [![Replicate](https://replicate.com/gauravk95/sadtalker-video/badge)](https://replicate.com/gauravk95/sadtalker-video)
 
 This project is based on SadTalkers to implement Wav2lip for video lip synthesis. By using video files to generate lip shapes driven by voice, and setting a configurable enhancement method for the facial area, the synthetic lip shape (face) area image enhancement is performed to improve the clarity of the generated lip shapes. Use the DAIN frame interpolation DL algorithm to add frames to the generated video to supplement the action transition of synthetic lip shapes between frames, making the synthesized lip shapes more smooth, realistic and natural.
-
-Colab: [![Open in colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/gauravk95/SadTalker-Video/blob/master/sad_talker_video_colab.ipynb) 
 
 ## 1. Environment preparation (Environment)
 
